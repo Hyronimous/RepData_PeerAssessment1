@@ -1,25 +1,88 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Assignment: personal activity monitoring"
+author: "Jeroen van der A"
+date: "May 14, 2016"
+output: html_document
 ---
 
+## calling necessary libraries
+```{R libraries}
+library(plyr)
+library(ggplot2)
+library(lubridate)
 
-## Loading and preprocessing the data
 
 
+```
+
+## loading and cleaning data
+```{r loadingData}
+stepdata = read.csv('activity.csv', na.strings=c("NA"))
+```
 
 ## What is mean total number of steps taken per day?
 
+```{r showTotals}
+aggrsteps <- aggregate(steps ~ date, data=stepdata, sum)
+hist(aggrsteps$steps, 
+     xlab='steps', 
+     main='Frequency of days where a number of steps have been made',
+     breaks=8,
+     col="lightgray"
+     )
 
+```
+
+## Calculate and report the mean and median total number of steps taken per day
+
+```{r calculateMeanMedian}
+mean(aggrsteps$steps)
+median(aggrsteps$steps)
+```
+#### Extra step to visualize the last question and see how the data is spread.
+```{R boxplot}
+
+boxplot(aggrsteps$steps,data=aggrsteps, 
+        main="number of steps per day")
+points(mean(aggrsteps$steps),
+       col="red",
+       pch=18)
+
+```
 
 ## What is the average daily activity pattern?
 
-
+```{R meanInterval}
+intervalmean = aggregate(steps ~ interval, data=stepdata, mean)
+plot(intervalmean$interval, intervalmean$steps, type='l',
+	 xlab='5 minute interval', ylab='average number of steps')
+```
 
 ## Imputing missing values
 
+``` {R missing values}
+sum(is.na(stepdata))
+cleanstepdata <- stepdata[complete.cases(stepdata),]
+dirtystepdata <- stepdata[!complete.cases(stepdata),]
+cleanedstepdata <- merge(dirtystepdata[, -1], intervalmean, all.x=T)
 
+allcleandata <- rbind(cleanstepdata,cleanedstepdata)
+
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+```{R difference between weekdays and weekend}
+allcleandata <- mutate(allcleandata, date = ymd(date), 
+                       weekday = weekdays(ymd(date)),
+                       day_type = ifelse(weekday == "Saturday" | weekday == "Sunday", "Weekend", "Weekday")
+                       )
+cleandata_weektype = aggregate(steps ~ interval+day_type, allcleandata,mean)
+
+ggplot(data=cleandata_weektype, aes(interval, steps)) + geom_line() + 
+  facet_wrap(~day_type, nrow=2) + ylab('Number of steps')
+```
+
+#### Some observations
++ during weekdays there seems to be a higher peak in number of steps in the early morning
++ during the day in weekends the number of steps on average is higher then during weekdays.
